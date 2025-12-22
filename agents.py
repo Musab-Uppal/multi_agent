@@ -29,20 +29,70 @@ class TranscriptionAgent:
         result = self.transcription_tool.transcribe_video(video_url)
         
         if result["success"]:
-            # Save to knowledge base
+            # Derive a short "main content" summary from the transcription
+            main_content = self._extract_main_content(result.get("transcription", ""))
+
+            # Save to knowledge base (include main_content)
             video_data = {
                 "video_title": video_title or result.get("video_title", "Unknown"),
                 "video_url": video_url,
-                "raw_data": result.get("raw_data", {})
+                "raw_data": result.get("raw_data", {}),
+                "main_content": main_content
             }
-            
+
             saved_path = self.knowledge_base.save_transcription(video_data, result["transcription"])
-            
+
             if saved_path:
                 result["saved_path"] = saved_path
                 print(f"✅ Transcription saved to: {saved_path}")
+
+            # Attach main_content to the returned result so UI can show it immediately
+            result["main_content"] = main_content
         
         return result
+
+    def _extract_main_content(self, transcription: str) -> str:
+        """Try to extract a concise "main content" block from the transcription.
+
+        Strategy:
+        - Look for common headings such as "Main takeaways" or "Main takeaways and insights".
+        - If found, return the paragraph(s) following the heading.
+        - Otherwise, return the first ~400 characters (trimmed to sentence boundary).
+        """
+        if not transcription:
+            return ""
+
+        lowered = transcription.lower()
+        # Look for explicit sections
+        markers = ["main takeaways", "main takeaways and insights", "main takeaways:", "key takeaways", "takeaways", "main takeaways and insights:"]
+        for m in markers:
+            idx = lowered.find(m)
+            if idx != -1:
+                # Find the original-cased index from transcription
+                start = idx + len(m)
+                # Extract following text up to a reasonable length
+                snippet = transcription[start:start+800].strip()
+                # Trim leading punctuation/colon/newlines
+                snippet = snippet.lstrip(':\n\r ')
+                # Return up to the first double newline or 400 chars
+                parts = snippet.split('\n\n')
+                candidate = parts[0].strip()
+                if len(candidate) > 400:
+                    candidate = candidate[:400].rsplit(' ', 1)[0] + '...'
+                return candidate
+
+        # Fallback: first 2-3 sentences or ~400 chars
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', transcription.strip())
+        if len(sentences) >= 3:
+            candidate = ' '.join(sentences[:3]).strip()
+        else:
+            candidate = transcription.strip()[:400]
+
+        if len(candidate) > 400:
+            candidate = candidate[:400].rsplit(' ', 1)[0] + '...'
+
+        return candidate
 
 class OrchestratorAgent:
     """Main agent that orchestrates the workflow"""

@@ -4,7 +4,7 @@ from datetime import datetime
 from agents import OrchestratorAgent, TranscriptionAgent
 from knowledge_base import KnowledgeBase
 from dotenv import load_dotenv
-
+from tools import list_available_models
 # Load environment variables
 load_dotenv()
 
@@ -72,7 +72,7 @@ def main():
         
         menu = st.selectbox(
             "Select Mode",
-            ["🔍 Search & Transcribe", "📚 Knowledge Base", "⚙️ Settings"]
+            ["🔍 Search & Transcribe", "📚 Knowledge Base"]
         )
         
         st.divider()
@@ -84,8 +84,8 @@ def main():
         
         st.divider()
         
-        st.markdown("### 🔑 API Status")
-        serpapi_key = os.getenv("SERPAPI_API_KEY")
+        
+        serpapi_key = os.getenv("SERP_API_KEY")
         gemini_key = os.getenv("GEMINI_API_KEY")
         
         col1, col2 = st.columns(2)
@@ -99,8 +99,6 @@ def main():
         show_search_interface()
     elif menu == "📚 Knowledge Base":
         show_knowledge_base()
-    elif menu == "⚙️ Settings":
-        show_settings()
 
 def show_search_interface():
     st.markdown('<h2 class="sub-header">🔍 Search for Videos and Get Transcripts</h2>', unsafe_allow_html=True)
@@ -122,7 +120,7 @@ def show_search_interface():
             st.warning("Please enter a search query")
             return
         
-        if not os.getenv("SERPAPI_API_KEY") or not os.getenv("GEMINI_API_KEY"):
+        if not os.getenv("SERP_API_KEY") or not os.getenv("GEMINI_API_KEY"):
             st.error("API keys not configured. Please check Settings.")
             return
         
@@ -132,6 +130,11 @@ def show_search_interface():
             
             if result["success"]:
                 st.success("✅ Transcription completed successfully!")
+                # Show extracted main content (if available)
+                main_content = result.get("main_content") or ""
+                if main_content:
+                    st.markdown("### ✨ Main Content")
+                    st.markdown(f'<div class="success-box">{main_content}</div>', unsafe_allow_html=True)
                 
                 # Display video results
                 st.markdown("### 📺 Search Results")
@@ -212,8 +215,16 @@ def show_knowledge_base():
             
             with col3:
                 if st.button("🗑️ Delete", key=f"delete_{transcript['filename']}"):
-                    # Implement delete functionality
-                    st.warning("Delete functionality to be implemented")
+                    # Delete the transcription file and clear any viewing state
+                    deleted = kb.delete_transcription(transcript['filename'])
+                    if deleted:
+                        view_key = f"viewing_{transcript['filename']}"
+                        if view_key in st.session_state:
+                            del st.session_state[view_key]
+                        st.success("Deleted transcription.")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Failed to delete transcription (file not found or permission error).")
     
     # Display selected transcript
     for transcript in filtered_transcripts:
@@ -222,6 +233,12 @@ def show_knowledge_base():
             data = st.session_state[key]
             st.divider()
             st.markdown(f"### 📝 {data.get('metadata', {}).get('title', 'Transcript')}")
+            # Show stored main content if present
+            main_preview = data.get("main_content", "")
+            if main_preview:
+                st.markdown("### ✨ Main Content")
+                st.markdown(f'<div class="success-box">{main_preview}</div>', unsafe_allow_html=True)
+
             st.markdown(f'<div class="transcription-box">{data.get("transcription", "")}</div>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
@@ -238,61 +255,7 @@ def show_knowledge_base():
                     del st.session_state[key]
                     st.rerun()
 
-def show_settings():
-    st.markdown('<h2 class="sub-header">⚙️ API Configuration</h2>', unsafe_allow_html=True)
-    
-    st.warning("For security, API keys should be set in the `.env` file")
-    
-    with st.form("api_settings"):
-        serpapi_key = st.text_input(
-            "SerpApi API Key",
-            value=os.getenv("SERPAPI_API_KEY", ""),
-            type="password"
-        )
-        
-        gemini_key = st.text_input(
-            "Gemini API Key",
-            value=os.getenv("GEMINI_API_KEY", ""),
-            type="password"
-        )
-        
-        kb_path = st.text_input(
-            "Knowledge Base Path",
-            value=os.getenv("KNOWLEDGE_BASE_PATH", "./transcripts")
-        )
-        
-        if st.form_submit_button("Save Configuration"):
-            # Note: In production, save to .env file or database
-            st.info("In production, implement saving to .env file or secure storage")
-            st.success("Settings updated (demo mode)")
-    
-    st.divider()
-    
-    st.markdown("### 🛠️ Tools & Utilities")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button("Clear Cache", type="secondary"):
-            st.cache_resource.clear()
-            st.success("Cache cleared!")
-    
-    with col2:
-        if st.button("Test API Connections", type="secondary"):
-            from tools import VideoSearchTool, TranscriptionTool
-            
-            try:
-                search_tool = VideoSearchTool()
-                test_result = search_tool.search_video("test", num_results=1)
-                st.success(f"SerpApi: {'Connected' if test_result['success'] else 'Error'}")
-            except:
-                st.error("SerpApi: Connection failed")
-            
-            try:
-                trans_tool = TranscriptionTool()
-                st.success("Gemini: Initialized successfully")
-            except:
-                st.error("Gemini: Initialization failed")
+
 
 if __name__ == "__main__":
     main()

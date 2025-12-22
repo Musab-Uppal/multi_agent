@@ -14,7 +14,10 @@ class KnowledgeBase:
         os.makedirs(self.base_path, exist_ok=True)
     
     def save_transcription(self, video_data: Dict[str, Any], transcription: str) -> str:
-        """Save transcription to file"""
+        """Save transcription to file
+
+        Accepts optional `main_content` inside `video_data` or as keyword param.
+        """
         try:
             # Create filename from video title and timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -32,7 +35,8 @@ class KnowledgeBase:
                     "source": "youtube"
                 },
                 "transcription": transcription,
-                "raw_data": video_data.get("raw_data", {})
+                "raw_data": video_data.get("raw_data", {}),
+                "main_content": video_data.get("main_content", "")
             }
             
             # Save to file
@@ -72,3 +76,16 @@ class KnowledgeBase:
                 return json.load(f)
         except:
             return {}
+
+    def delete_transcription(self, filename: str) -> bool:
+        """Delete a saved transcription file. Returns True on success."""
+        filepath = os.path.join(self.base_path, filename)
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error deleting transcription {filepath}: {e}")
+            return False
