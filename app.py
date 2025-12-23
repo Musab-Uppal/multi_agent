@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS
+# Custom CSS with better visibility
 st.markdown("""
 <style>
     .main-header {
@@ -37,18 +37,42 @@ st.markdown("""
         border-left: 4px solid #3B82F6;
     }
     .transcription-box {
-        background-color: #F9FAFB;
+        background-color: #FFFFFF;
         padding: 1.5rem;
         border-radius: 10px;
         border: 1px solid #E5E7EB;
         max-height: 500px;
         overflow-y: auto;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #111827;  /* Dark gray for better readability */
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .transcription-text {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: #111827 !important;
+        font-weight: 400;
     }
     .success-box {
         background-color: #D1FAE5;
         padding: 1rem;
         border-radius: 10px;
         border-left: 4px solid #10B981;
+        color: #065F46;
+    }
+    .dark-text {
+        color: #111827 !important;
+        font-weight: 500;
+    }
+    .transcription-header {
+        background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px 8px 0 0;
+        margin-bottom: 0;
+        font-weight: 600;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -108,7 +132,7 @@ def show_search_interface():
     with col1:
         search_query = st.text_input(
             "Enter search query",
-            placeholder="e.g., Ways to earn money in 2026",
+            placeholder="e.g., Basics of Python",
             key="search_input"
         )
     with col2:
@@ -120,7 +144,9 @@ def show_search_interface():
             st.warning("Please enter a search query")
             return
         
-        
+        if not os.getenv("SERP_API_KEY") or not os.getenv("GEMINI_API_KEY"):
+            st.error("API keys not configured. Please check Settings.")
+            return
         
         with st.spinner("Searching for videos..."):
             orchestrator = get_orchestrator()
@@ -136,8 +162,19 @@ def show_search_interface():
                 
                 # Display transcription FIRST
                 st.markdown("### 📝 Transcription")
+                st.markdown('<div class="transcription-header">Full Transcript</div>', unsafe_allow_html=True)
+                
+                # Display transcription with better styling
                 with st.expander("View Full Transcription", expanded=True):
-                    st.markdown(f'<div class="transcription-box">{result["transcription"]}</div>', unsafe_allow_html=True)
+                    # Wrap transcription text in a div with specific styling
+                    transcription_html = f"""
+                    <div class="transcription-box">
+                        <div class="transcription-text">
+                            {result["transcription"]}
+                        </div>
+                    </div>
+                    """
+                    st.markdown(transcription_html, unsafe_allow_html=True)
                 
                 # Download option
                 col1, col2 = st.columns(2)
@@ -240,7 +277,16 @@ def show_knowledge_base():
                 st.markdown("### ✨ Main Content")
                 st.markdown(f'<div class="success-box">{main_preview}</div>', unsafe_allow_html=True)
 
-            st.markdown(f'<div class="transcription-box">{data.get("transcription", "")}</div>', unsafe_allow_html=True)
+            # Display transcription with better styling
+            st.markdown('<div class="transcription-header">Full Transcript</div>', unsafe_allow_html=True)
+            transcription_html = f"""
+            <div class="transcription-box">
+                <div class="transcription-text">
+                    {data.get("transcription", "")}
+                </div>
+            </div>
+            """
+            st.markdown(transcription_html, unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             with col1:
