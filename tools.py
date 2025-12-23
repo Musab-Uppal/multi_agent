@@ -32,7 +32,7 @@ class VideoSearchTool:
                 "num": num_results
             }
             
-            # Make direct API call - NO external package dependency
+           
             response = requests.get(self.base_url, params=params, timeout=30)
             
             if response.status_code != 200:

@@ -108,7 +108,7 @@ def show_search_interface():
     with col1:
         search_query = st.text_input(
             "Enter search query",
-            placeholder="e.g., Machine Learning Tutorial 2024",
+            placeholder="e.g., Ways to earn money in 2026",
             key="search_input"
         )
     with col2:
@@ -120,9 +120,7 @@ def show_search_interface():
             st.warning("Please enter a search query")
             return
         
-        if not os.getenv("SERP_API_KEY") or not os.getenv("GEMINI_API_KEY"):
-            st.error("API keys not configured. Please check Settings.")
-            return
+        
         
         with st.spinner("Searching for videos..."):
             orchestrator = get_orchestrator()
@@ -136,21 +134,7 @@ def show_search_interface():
                     st.markdown("### ✨ Main Content")
                     st.markdown(f'<div class="success-box">{main_content}</div>', unsafe_allow_html=True)
                 
-                # Display video results
-                st.markdown("### 📺 Search Results")
-                for i, video in enumerate(result.get("search_results", [])):
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="video-card">
-                            <h4>🎥 {video.get('title', 'No title')}</h4>
-                            <p><strong>Channel:</strong> {video.get('channel', 'Unknown')}</p>
-                            <p><strong>Duration:</strong> {video.get('duration', 'N/A')} | 
-                            <strong>Views:</strong> {video.get('views', 'N/A')}</p>
-                            <a href="{video.get('link')}" target="_blank">Watch on YouTube ↗</a>
-                        </div>
-                        """, unsafe_allow_html=True)
-                
-                # Display transcription
+                # Display transcription FIRST
                 st.markdown("### 📝 Transcription")
                 with st.expander("View Full Transcription", expanded=True):
                     st.markdown(f'<div class="transcription-box">{result["transcription"]}</div>', unsafe_allow_html=True)
@@ -166,6 +150,23 @@ def show_search_interface():
                     )
                 with col2:
                     st.info(f"Saved to: {result.get('saved_path', 'Knowledge base')}")
+                
+                # Display video results AFTER transcription
+                st.markdown("### 📺 Search Results")
+                st.info(f"Found {len(result.get('search_results', []))} video(s) for your search query.")
+                
+                for i, video in enumerate(result.get("search_results", [])):
+                    with st.container():
+                        st.markdown(f"""
+                        <div class="video-card">
+                            <h4>🎥 {video.get('title', 'No title')}</h4>
+                            <p><strong>Channel:</strong> {video.get('channel', 'Unknown')}</p>
+                            <p><strong>Duration:</strong> {video.get('duration', 'N/A')} | 
+                            <strong>Views:</strong> {video.get('views', 'N/A')}</p>
+                            <a href="{video.get('link')}" target="_blank">Watch on YouTube ↗</a>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
             else:
                 st.error(f"Error: {result.get('error', 'Unknown error')}")
 
@@ -222,7 +223,7 @@ def show_knowledge_base():
                         if view_key in st.session_state:
                             del st.session_state[view_key]
                         st.success("Deleted transcription.")
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         st.error("Failed to delete transcription (file not found or permission error).")
     
